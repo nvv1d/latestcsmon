@@ -1,0 +1,15 @@
+LICENSE
+README.md
+setup.py
+sesame_ai/__init__.py
+sesame_ai/api.py
+sesame_ai/config.py
+sesame_ai/exceptions.py
+sesame_ai/models.py
+sesame_ai/token_manager.py
+sesame_ai/websocket.py
+sesame_ai.egg-info/PKG-INFO
+sesame_ai.egg-info/SOURCES.txt
+sesame_ai.egg-info/dependency_links.txt
+sesame_ai.egg-info/requires.txt
+sesame_ai.egg-info/top_level.txt

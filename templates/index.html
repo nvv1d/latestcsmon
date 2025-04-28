@@ -1,0 +1,185 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SesameAI Voice Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        select, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SesameAI Voice Chat</h1>
+        <div class="controls">
+            <select id="character">
+                <option value="Miles">Miles</option>
+                <option value="Maya">Maya</option>
+            </select>
+            <button id="startBtn">Start Chat</button>
+            <button id="stopBtn" disabled>Stop Chat</button>
+        </div>
+        <div id="status">Ready to start</div>
+        <div class="indicators">
+            <div id="micStatus" class="indicator">Microphone: Inactive</div>
+            <div id="audioStatus" class="indicator">Audio: Not receiving</div>
+            <div id="audioLevel" class="indicator">Input Level: 0%</div>
+            <div id="logWindow" class="log-window"></div>
+        </div>
+        <style>
+            .indicators {
+                margin: 20px;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .indicator {
+                margin: 5px;
+                padding: 5px;
+                background: #f0f0f0;
+                border-radius: 3px;
+            }
+            .log-window {
+                height: 150px;
+                overflow-y: auto;
+                background: #f8f8f8;
+                padding: 10px;
+                margin-top: 10px;
+                font-family: monospace;
+                font-size: 12px;
+            }
+        </style>
+            <div id="logs" class="logs"></div>
+        </div>
+    </div>
+
+    <style>
+        .indicators {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .indicator {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .logs {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f5f5f5;
+            padding: 10px;
+        }
+    </style>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const characterSelect = document.getElementById('character');
+        const statusDiv = document.getElementById('status');
+
+        function addLog(message, isError = false) {
+            const logs = document.getElementById('logs');
+            const log = document.createElement('div');
+            log.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            if (isError) log.style.color = 'red';
+            logs.appendChild(log);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                // Request microphone permission
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission
+                
+                startBtn.disabled = true;
+                statusDiv.textContent = 'Connecting...';
+                document.getElementById('micStatus').classList.remove('active');
+                document.getElementById('audioStatus').classList.remove('active');
+                addLog('Attempting to connect...');
+                
+                const response = await fetch('/start_chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        character: characterSelect.value
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    statusDiv.textContent = 'Connected! You can now speak.';
+                    stopBtn.disabled = false;
+                    document.getElementById('micStatus').classList.add('active');
+                    document.getElementById('micStatus').textContent = 'Microphone: Active';
+                    document.getElementById('audioStatus').textContent = 'Audio: Waiting for response';
+                    addLog('Successfully connected to chat');
+                    addLog(data.message);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+                startBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/stop_chat', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    statusDiv.textContent = 'Chat ended';
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
