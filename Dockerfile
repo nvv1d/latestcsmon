@@ -5,12 +5,18 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y \
     portaudio19-dev \
     libasound2-dev \
+    ffmpeg \
+    python3-dev \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
-COPY requirements.txt .
+COPY requirements.txt ./requirements.txt
+# Install PyAudio separately first
+RUN pip install --no-cache-dir PyAudio
+# Then install the rest of the requirements
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
