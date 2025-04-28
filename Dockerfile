@@ -13,11 +13,13 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
-COPY requirements.txt ./requirements.txt
+COPY Requirements.txt ./requirements.txt
 # Install PyAudio separately first
 RUN pip install --no-cache-dir PyAudio
 # Then install the rest of the requirements
 RUN pip install --no-cache-dir -r requirements.txt
+# Install Flask explicitly (in case it wasn't installed from requirements)
+RUN pip install --no-cache-dir flask
 
 # Copy the rest of the application
 COPY . .
