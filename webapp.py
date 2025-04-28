@@ -36,8 +36,11 @@ def check_audio_devices():
 import os
 is_replit = 'REPL_ID' in os.environ
 
+# Force real audio mode for deployments
+force_real_audio = True  # Set to True for platforms that support audio I/O
+
 # Check if audio devices are available
-has_audio = check_audio_devices()
+has_audio = check_audio_devices() or force_real_audio
 if not has_audio:
     app.logger.warning("No audio devices available in this environment")
     if is_replit:
@@ -71,22 +74,63 @@ class MockAudioStream:
 def home():
     return render_template('index.html')
 
+@app.route('/list_audio_devices', methods=['GET'])
+def list_audio_devices():
+    """API endpoint to list available audio devices"""
+    devices = []
+    try:
+        for i in range(audio.get_device_count()):
+            try:
+                device_info = audio.get_device_info_by_index(i)
+                device_type = []
+                if device_info.get('maxInputChannels', 0) > 0:
+                    device_type.append('input')
+                if device_info.get('maxOutputChannels', 0) > 0:
+                    device_type.append('output')
+                    
+                devices.append({
+                    'id': i,
+                    'name': device_info.get('name', 'Unknown Device'),
+                    'type': device_type,
+                    'sampleRate': int(device_info.get('defaultSampleRate', 44100))
+                })
+            except Exception as e:
+                app.logger.warning(f"Error getting device info for device {i}: {e}")
+                continue
+    except Exception as e:
+        app.logger.error(f"Error listing audio devices: {e}")
+        
+    return jsonify({
+        'devices': devices,
+        'has_audio': has_audio or force_real_audio
+    })
+
 @app.route('/start_chat', methods=['POST'])
 def start_chat():
     global input_stream, output_stream, ws
     try:
         character = request.json.get('character', 'Miles')
+        # Get device indices from request if available
+        input_device_index = request.json.get('input_device', None)
+        output_device_index = request.json.get('output_device', None)
+        
+        # Convert to int if provided as string
+        if input_device_index is not None and isinstance(input_device_index, str) and input_device_index.isdigit():
+            input_device_index = int(input_device_index)
+        if output_device_index is not None and isinstance(output_device_index, str) and output_device_index.isdigit():
+            output_device_index = int(output_device_index)
 
         # Set up audio streams with error handling
         if has_audio:
             try:
+                app.logger.info(f"Initializing real audio with input device: {input_device_index}, output device: {output_device_index}")
                 input_stream = audio.open(
                     format=FORMAT,
                     channels=CHANNELS,
                     rate=RATE,
                     input=True,
                     frames_per_buffer=CHUNK,
-                    input_device_index=None  # Let PyAudio choose best device
+                    input_device_index=input_device_index  # Use selected device or default
                 )
                 
                 output_stream = audio.open(
@@ -94,8 +138,9 @@ def start_chat():
                     channels=CHANNELS,
                     rate=RATE,
                     output=True,
-                    output_device_index=None  # Let PyAudio choose best device
+                    output_device_index=output_device_index  # Use selected device or default
                 )
+                app.logger.info("Successfully initialized real audio streams")
             except OSError as e:
                 app.logger.error(f"Failed to open audio streams: {e}")
                 raise Exception("Audio device initialization failed. Please check your system's audio settings.")
@@ -149,4 +194,5 @@ def stop_chat():
     return jsonify({'status': 'success'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
