@@ -8,7 +8,12 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     python3-dev \
     build-essential \
+    pulseaudio \
+    alsa-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Create a .asoundrc file with a null device as fallback
+RUN echo "pcm.!default { type plug slave.pcm \"null\" }" > /root/.asoundrc
 
 WORKDIR /app
 
