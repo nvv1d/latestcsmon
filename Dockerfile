@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first to leverage Docker cache
-COPY Requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 # Install PyAudio separately first
 RUN pip install --no-cache-dir PyAudio
 # Then install the rest of the requirements
